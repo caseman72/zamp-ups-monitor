@@ -1,0 +1,184 @@
+type: grid
+cards:
+  - type: heading
+    heading: Temgo UPS
+    heading_style: title
+  - type: custom:button-card
+    entity: sensor.zamp_ups_monitor_soc
+    show_name: false
+    show_icon: false
+    show_state: false
+    styles:
+      card:
+        - background: "linear-gradient(145deg, #2a2a2a, #1a1a1a)"
+        - border-radius: 12px
+        - padding: 16px
+        - box-shadow: 0 2px 8px rgba(0,0,0,0.3)
+      grid:
+        - grid-template-areas: "\"title\" \"battery\" \"row1\" \"row2\" \"row3\""
+        - grid-template-rows: auto auto auto auto auto
+    custom_fields:
+      title: |
+        [[[
+          return `<div style="color:#ccc;font-size:14px;text-align:center;margin-bottom:4px;">
+            Temgo UPS <span style="color:#666;font-size:11px;">10:A5:62:90:E5:75</span>
+          </div>`;
+        ]]]
+      battery: |
+        [[[
+          const soc = parseInt(entity.state) || 0;
+          const color = soc >= 40 ? '#4CAF50' : soc >= 20 ? '#FF9800' : '#F44336';
+          const fillWidth = Math.max(0, Math.min(100, soc));
+          return `
+            <div style="display:flex;justify-content:center;align-items:center;padding:12px 0 16px;">
+              <div style="position:relative;width:200px;height:80px;">
+                <div style="position:absolute;inset:0;border:3px solid #555;border-radius:10px;"></div>
+                <div style="position:absolute;top:50%;right:-14px;transform:translateY(-50%);width:10px;height:32px;background:#555;border-radius:0 5px 5px 0;"></div>
+                <div style="position:absolute;left:4px;bottom:4px;top:4px;width:calc(${fillWidth}% - 8px);background:${color};border-radius:6px;transition:width 1s ease,background 1s ease;"></div>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:white;text-shadow:0 1px 3px rgba(0,0,0,0.5);">${soc}%</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      row1: |
+        [[[
+          const voltage = states['sensor.zamp_ups_monitor_pack_voltage'] ? states['sensor.zamp_ups_monitor_pack_voltage'].state : '--';
+          const currentVal = states['sensor.zamp_ups_monitor_current'] ? parseFloat(states['sensor.zamp_ups_monitor_current'].state) : 0;
+          const power = states['sensor.zamp_ups_monitor_power'] ? parseFloat(states['sensor.zamp_ups_monitor_power'].state) : 0;
+          const currentStr = currentVal > 0 ? `+${currentVal}A` : currentVal < 0 ? `${currentVal}A` : '0A';
+          const currentColor = currentVal > 0 ? '#4CAF50' : currentVal < 0 ? '#F44336' : '#999';
+          return `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:8px 0;border-top:1px solid #333;">
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Voltage</div>
+                <div style="color:#4CAF50;font-size:18px;font-weight:bold;">${voltage}V</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Current</div>
+                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${currentStr}</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Power</div>
+                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${Math.abs(power).toFixed(1)}W</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      row2: |
+        [[[
+          const mosTemp = states['sensor.zamp_ups_monitor_mosfet_temperature'] ? parseFloat(states['sensor.zamp_ups_monitor_mosfet_temperature'].state) : 0;
+          const battTemp = states['sensor.zamp_ups_monitor_battery_temperature_1'] ? parseFloat(states['sensor.zamp_ups_monitor_battery_temperature_1'].state) : 0;
+          const bleSwitch = states['switch.zamp_ups_monitor_bms_ble'] ? states['switch.zamp_ups_monitor_bms_ble'].state : 'off';
+          const chargeSwitch = states['switch.zamp_ups_monitor_charging'] ? states['switch.zamp_ups_monitor_charging'].state : 'off';
+          const dischargeSwitch = states['switch.zamp_ups_monitor_discharging'] ? states['switch.zamp_ups_monitor_discharging'].state : 'off';
+          const errors = (states['sensor.zamp_ups_monitor_bms_errors'] ? states['sensor.zamp_ups_monitor_bms_errors'].state : '') || '';
+
+          const bleOn = bleSwitch === 'on';
+          const chargeOn = chargeSwitch === 'on';
+          const dischargeOn = dischargeSwitch === 'on';
+          // "Mosfet Software Lock" is intentional, not a fault — strip it before checking for real errors
+          const realErrors = errors.replace(/mosfet software lock/gi, '').replace(/[,;]\s*/g, '').trim();
+          const hasFault = realErrors !== '' && realErrors.toLowerCase() !== 'unknown' && realErrors.toLowerCase() !== 'unavailable';
+
+          let state, stateColor, dotColor;
+          if (!bleOn) {
+            state = 'BLE OFF';   stateColor = '#999';     dotColor = '#999';
+          } else if (hasFault) {
+            state = 'FAULT';     stateColor = '#F44336';  dotColor = '#F44336';
+          } else if (chargeOn && dischargeOn) {
+            state = 'ON';     stateColor = '#4CAF50';  dotColor = '#4CAF50';
+          } else if (!chargeOn && dischargeOn) {
+            state = 'ON (DSG)';  stateColor = '#4CAF50';  dotColor = '#4CAF50';
+          } else if (chargeOn && !dischargeOn) {
+            state = 'ERR (!DSG)';  stateColor = '#FF9800';  dotColor = '#FF9800';
+          } else if (!chargeOn && !dischargeOn) {
+            state = 'ERROR';  stateColor = '#FF9800';  dotColor = '#FF9800';
+          } else {
+            state = 'OFFLINE';   stateColor = '#F44336';  dotColor = '#F44336';
+          }
+
+          function tempColor(t) {
+            if (t <= 40)  return '#2196F3';
+            if (t <= 50)  return '#00BCD4';
+            if (t <= 95)  return '#4CAF50';
+            if (t <= 115) return '#FF9800';
+            if (t <= 140) return '#FF5722';
+            return '#F44336';
+          }
+
+          return `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:8px 0;border-top:1px solid #333;">
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">MOSFET</div>
+                <div style="color:${tempColor(mosTemp)};font-size:18px;font-weight:bold;">${mosTemp}F</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Battery</div>
+                <div style="color:${tempColor(battTemp)};font-size:18px;font-weight:bold;">${battTemp}F</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;line-height:11px;">State <span style="color:${dotColor};font-size:16px;">&#x25CF;</span></div>
+                <div style="color:${stateColor};font-size:18px;font-weight:bold;">${state}</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      row3: |
+        [[[
+          const currentVal = states['sensor.zamp_ups_monitor_current'] ? parseFloat(states['sensor.zamp_ups_monitor_current'].state) : 0;
+          const capacity = states['sensor.zamp_ups_monitor_capacity_remaining'] ? parseFloat(states['sensor.zamp_ups_monitor_capacity_remaining'].state) : 0;
+          const nominal = states['sensor.zamp_ups_monitor_nominal_capacity'] ? parseFloat(states['sensor.zamp_ups_monitor_nominal_capacity'].state) : 300;
+          const delta = states['sensor.zamp_ups_monitor_delta_cell_voltage'] ? parseFloat(states['sensor.zamp_ups_monitor_delta_cell_voltage'].state) : 0;
+
+          let timeStr = 'Idle';
+          let timeColor = '#999';
+          if (currentVal < 0 && capacity > 0) {
+            // discharging — time until empty at current draw
+            const secs = Math.round(capacity / Math.abs(currentVal) * 3600);
+            const d = Math.floor(secs / 86400);
+            const h = Math.floor((secs % 86400) / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            timeStr = d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
+            timeColor = '#F44336';
+          } else if (currentVal > 0) {
+            // charging — time until full at current rate
+            const remaining = Math.max(0, nominal - capacity);
+            if (remaining > 0) {
+              const secs = Math.round(remaining / currentVal * 3600);
+              const h = Math.floor(secs / 3600);
+              const m = Math.floor((secs % 3600) / 60);
+              timeStr = `${h}h ${m}m`;
+            } else {
+              timeStr = 'Full';
+            }
+            timeColor = '#4CAF50';
+          }
+
+          const deltaMv = Math.round(delta * 1000);
+          const deltaColor = deltaMv < 20 ? '#4CAF50' : deltaMv < 50 ? '#FF9800' : '#F44336';
+
+          return `
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:8px 0;border-top:1px solid #333;">
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Time</div>
+                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${timeStr}</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Capacity</div>
+                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${capacity.toFixed(0)}Ah</div>
+              </div>
+              <div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Cell &#916;</div>
+                <div style="color:${deltaColor};font-size:18px;font-weight:bold;">${deltaMv}mV</div>
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:bubble-card
+    card_type: button
+    button_type: switch
+    sub_button:
+      main: []
+      bottom: []
+    entity: switch.zamp_ups_monitor_bms_ble
+    name: Zamp UPS BLE
