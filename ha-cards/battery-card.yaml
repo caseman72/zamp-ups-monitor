@@ -45,8 +45,15 @@ cards:
           const voltage = states['sensor.zamp_ups_monitor_pack_voltage'] ? states['sensor.zamp_ups_monitor_pack_voltage'].state : '--';
           const currentVal = states['sensor.zamp_ups_monitor_current'] ? parseFloat(states['sensor.zamp_ups_monitor_current'].state) : 0;
           const power = states['sensor.zamp_ups_monitor_power'] ? parseFloat(states['sensor.zamp_ups_monitor_power'].state) : 0;
-          const currentStr = currentVal > 0 ? `+${currentVal}A` : currentVal < 0 ? `${currentVal}A` : '0A';
+          const powerStr = Number.isNaN(power) ? '0' : Math.abs(power).toFixed(0);
+          const currentStr = currentVal > 0 ? `+${currentVal.toFixed(1)}A` : currentVal < 0 ? `${currentVal.toFixed(1)}A` : '0A';
           const currentColor = currentVal > 0 ? '#4CAF50' : currentVal < 0 ? '#F44336' : '#999';
+
+          const current2Val = states['sensor.ups_monitor_current'] ? parseFloat(states['sensor.ups_monitor_current'].state) : 0;
+          const current2Str = current2Val > 0 ? `${current2Val.toFixed(1)}A` : current2Val < 0 ? `${current2Val.toFixed(1)}A` : '0A';
+          const power2 = states['sensor.ups_monitor_power'] ? parseFloat(states['sensor.ups_monitor_power'].state) : 0;
+          const power2Str = Number.isNaN(power2) ? '0' : Math.abs(power2).toFixed(0);
+
           return `
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;text-align:center;padding:8px 0;border-top:1px solid #333;">
               <div>
@@ -55,11 +62,11 @@ cards:
               </div>
               <div>
                 <div style="color:#888;font-size:11px;margin-bottom:2px;">Current</div>
-                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${currentStr}</div>
+                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${currentStr}/${current2Str}</div>
               </div>
               <div>
                 <div style="color:#888;font-size:11px;margin-bottom:2px;">Power</div>
-                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${Math.abs(power).toFixed(1)}W</div>
+                <div style="color:${currentColor};font-size:18px;font-weight:bold;">${powerStr}W/${power2Str}W</div>
               </div>
             </div>
           `;

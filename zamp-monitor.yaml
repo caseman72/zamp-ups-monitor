@@ -191,54 +191,76 @@ sensor:
     jbd_bms_ble_id: bms0
     total_voltage:
       name: "Pack Voltage"
+      filters: &nan_filter
+        - filter_out: nan
     current:
       name: "Current"
+      filters: *nan_filter
     power:
       name: "Power"
+      filters: *nan_filter
     state_of_charge:
       name: "SOC"
+      filters: *nan_filter
     capacity_remaining:
       name: "Capacity Remaining"
+      filters: *nan_filter
     nominal_capacity:
       name: "Nominal Capacity"
+      filters: *nan_filter
     charging_cycles:
       name: "Charging Cycles"
+      filters: *nan_filter
     battery_strings:
       name: "Battery Strings"
+      filters: *nan_filter
     errors_bitmask:
       name: "Errors Bitmask"
+      filters: *nan_filter
     balancer_status_bitmask:
       name: "Balancer Status Bitmask"
+      filters: *nan_filter
     cell_voltage_1:
       name: "Cell 1 Voltage"
+      filters: *nan_filter
     cell_voltage_2:
       name: "Cell 2 Voltage"
+      filters: *nan_filter
     cell_voltage_3:
       name: "Cell 3 Voltage"
+      filters: *nan_filter
     cell_voltage_4:
       name: "Cell 4 Voltage"
+      filters: *nan_filter
     min_cell_voltage:
       name: "Min Cell Voltage"
+      filters: *nan_filter
     max_cell_voltage:
       name: "Max Cell Voltage"
+      filters: *nan_filter
     delta_cell_voltage:
       name: "Delta Cell Voltage"
+      filters: *nan_filter
     average_cell_voltage:
       name: "Average Cell Voltage"
+      filters: *nan_filter
     temperature_1:
       name: "MOSFET Temperature"
       unit_of_measurement: "°F"
       filters:
+        - filter_out: nan
         - lambda: return x * 9.0 / 5.0 + 32.0;
     temperature_2:
       name: "Battery Temperature 1"
       unit_of_measurement: "°F"
       filters:
+        - filter_out: nan
         - lambda: return x * 9.0 / 5.0 + 32.0;
     temperature_3:
       name: "Battery Temperature 2"
       unit_of_measurement: "°F"
       filters:
+        - filter_out: nan
         - lambda: return x * 9.0 / 5.0 + 32.0;
 
 text_sensor:
