@@ -12,3 +12,5 @@ secrets.h
 
 # macOS
 .DS_Store
+
+*.bak.*
