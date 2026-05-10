@@ -2,13 +2,8 @@
 // Copy to secrets.h and fill in values
 // This file is gitignored - do not commit to public repos
 
-// Primary WiFi (default at boot)
-#define WIFI_SSID_PRIMARY "your_primary_ssid"
-#define WIFI_PASSWORD_PRIMARY "your_primary_password"
-
-// Secondary WiFi (e.g. Starlink fallback)
-#define WIFI_SSID_SECONDARY "your_secondary_ssid"
-#define WIFI_PASSWORD_SECONDARY "your_secondary_password"
+#define WIFI_SSID "your_ssid"
+#define WIFI_PASSWORD "your_password"
 
 #define MQTT_BROKER "your_broker"
 #define MQTT_USERNAME "your_username"

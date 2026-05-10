@@ -29,7 +29,7 @@ external component — no cloud, no encryption, no Tuya account.
 | State | `Charging`, `Discharging`, `Balancing`, `BMS Online` (binary), `Operation Status` (text), `Device Model` (text), `BMS Errors` (text), `Errors Bitmask`, `Balancer Status Bitmask` |
 | Diag  | `WiFi RSSI`, `IP Address`, `WiFi Network` |
 
-Update interval: 30 s.
+Update interval: 61 s (skewed by 1 s from revel's 60 s — co-prime so they only co-publish on broker once per LCM = 61 min).
 
 ## Hardware
 
@@ -43,12 +43,8 @@ Update interval: 30 s.
 
 ## Networks
 
-| Slot | Notes |
-|---|---|
-| Primary (default at boot) | preferred LAN |
-| Secondary (toggle via P3) | Starlink fallback |
+Single network — `farmland` LAN. P3 is unused.
 
-P3 button toggles network and reboots; selection persists in NVS.
 P5 button safe-reboots.
 
 ## MQTT

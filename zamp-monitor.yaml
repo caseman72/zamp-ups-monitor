@@ -1,9 +1,7 @@
 substitutions:
   # Secrets - override via upload.sh
-  wifi_primary_ssid: "PLACEHOLDER"
-  wifi_primary_password: "PLACEHOLDER"
-  wifi_secondary_ssid: "PLACEHOLDER"
-  wifi_secondary_password: "PLACEHOLDER"
+  wifi_ssid: "PLACEHOLDER"
+  wifi_password: "PLACEHOLDER"
   mqtt_broker: "PLACEHOLDER"
   mqtt_username: "PLACEHOLDER"
   mqtt_password: "PLACEHOLDER"
@@ -16,20 +14,6 @@ substitutions:
 esphome:
   name: zamp-monitor
   friendly_name: Zamp UPS Monitor
-  on_boot:
-    priority: 599
-    then:
-      - lambda: |-
-          ESP_LOGW("boot", "use_secondary_network = %s", id(use_secondary_network) ? "TRUE" : "FALSE");
-          if (id(use_secondary_network)) {
-            ESP_LOGW("boot", "SWITCHING to secondary: ${wifi_secondary_ssid}");
-            wifi::WiFiAP ap;
-            ap.set_ssid("${wifi_secondary_ssid}");
-            ap.set_password("${wifi_secondary_password}");
-            wifi::global_wifi_component->set_sta(ap);
-          } else {
-            ESP_LOGW("boot", "Using primary: ${wifi_primary_ssid}");
-          }
 
 esp32:
   board: arduino_nano_esp32
@@ -39,8 +23,8 @@ esp32:
       CONFIG_LOG_COLORS: "n"
 
 wifi:
-  ssid: ${wifi_primary_ssid}
-  password: ${wifi_primary_password}
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
   fast_connect: true
   reboot_timeout: 15min
 
@@ -74,13 +58,6 @@ external_components:
   - source: github://syssi/esphome-jbd-bms@main
     refresh: 0s
 
-# State tracking
-globals:
-  - id: use_secondary_network
-    type: bool
-    restore_value: yes
-    initial_value: 'false'
-
 # BLE tracker (required by ble_client for the JBD connection)
 esp32_ble_tracker:
   scan_parameters:
@@ -96,7 +73,7 @@ ble_client:
 # JBD BMS instance — talks to the TEMGO over GATT FF00/FF01/FF02
 jbd_bms_ble:
   - ble_client_id: client_jbd
-    update_interval: 30s
+    update_interval: 61s
     id: bms0
 
 # Canaduino DOs — kept defined as internal so pins are driven LOW (not floating).
@@ -132,13 +109,6 @@ switch:
 # MQTT buttons for Home Assistant
 button:
   - platform: template
-    name: "P3 Button - Switch Network"
-    id: btn_switch_network
-    icon: "mdi:wifi-sync"
-    on_press:
-      - script.execute: switch_network
-
-  - platform: template
     name: "P5 Button - Restart"
     id: btn_restart
     icon: "mdi:restart"
@@ -152,7 +122,7 @@ sensor:
   - platform: wifi_signal
     name: "WiFi RSSI"
     id: wifi_rssi
-    update_interval: 60s
+    update_interval: 61s
     icon: "mdi:wifi"
 
   - platform: jbd_bms_ble
@@ -256,17 +226,3 @@ binary_sensor:
     jbd_bms_ble_id: bms0
     balancing:
       name: "Balancing"
-
-# Scripts
-script:
-  - id: switch_network
-    then:
-      - lambda: |-
-          id(use_secondary_network) = !id(use_secondary_network);
-          if (id(use_secondary_network)) {
-            ESP_LOGI("wifi", "Switching to ${wifi_secondary_ssid} - will restart");
-          } else {
-            ESP_LOGI("wifi", "Switching to ${wifi_primary_ssid} - will restart");
-          }
-      - delay: 500ms
-      - lambda: 'App.safe_reboot();'
