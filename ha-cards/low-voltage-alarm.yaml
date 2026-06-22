@@ -1,0 +1,38 @@
+alias: Zamp UPS Low Voltage
+description: >-
+  Charging is left ON 24/7 at 2A, so a healthy pack sits full (~13.4V+). If pack
+  voltage falls to ~13.16V (~75% on the 4S LiFePO4 OCV curve) something is broken
+  — dead charger, tripped breaker, or the BMS charge MOSFET cut out. This fires
+  with weeks of runway still left before any over-discharge danger.
+  Gated on the BMS BLE switch: the firmware filters NaN, so when BLE is off the
+  voltage sensor holds a STALE value rather than going unavailable — only alarm
+  when the link is live and the reading is real.
+triggers:
+  - trigger: numeric_state
+    entity_id:
+      - sensor.zamp_ups_monitor_pack_voltage
+    below: 13.16
+    for:
+      minutes: 10
+conditions:
+  - condition: state
+    entity_id: switch.zamp_ups_monitor_bms_ble
+    state: "on"
+actions:
+  - action: notify.mobile_app_sm_f766u1
+    metadata: {}
+    data:
+      title: ⚠️ Zamp UPS Low Voltage
+      message: >-
+        Pack {{ states('sensor.zamp_ups_monitor_pack_voltage') }}V (~75%) —
+        charging likely failed. {{ now().strftime('%d %b %Y – %-I:%M %p') }}
+    alias: Notifications 'Send a notification to caseman'
+  - action: system_log.write
+    metadata: {}
+    data:
+      level: warning
+      message: >-
+        Zamp UPS low voltage: {{ states('sensor.zamp_ups_monitor_pack_voltage') }}V
+        (<=13.16V / ~75%) — charging may have failed
+      logger: zamp_ups
+mode: single
