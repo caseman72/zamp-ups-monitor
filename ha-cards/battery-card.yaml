@@ -26,10 +26,11 @@ cards:
         ]]]
       battery: |
         [[[
-          // SOC derived from pack VOLTAGE, not the BMS coulomb-counted SOC —
-          // that counter is blind to the sub-threshold canaduino load and stays
-          // pinned (100% then a vertical step to 0% at over-discharge cutoff).
-          // Voltage is the only trustworthy gauge for this UPS.
+          // Gauge = min(voltage-derived SOC, BMS coulomb SOC). Each lies HIGH in
+          // its own failure mode — voltage over-reads under charge, the BMS counter
+          // over-reads on the sub-threshold canaduino drain (pinned 100% then a
+          // step to 0% at cutoff) — so the lower of the two is the honest one.
+          // Voltage piece first:
           const v = states['sensor.zamp_ups_monitor_pack_voltage']
             ? parseFloat(states['sensor.zamp_ups_monitor_pack_voltage'].state) : NaN;
           // 4S LiFePO4 resting OCV -> SOC (pack volts). Flat in the mid-range
@@ -52,6 +53,10 @@ cards:
             }
           }
           soc = Math.round(soc);
+          // Fold in the BMS coulomb SOC: take whichever is lower (the honest one).
+          // If the BMS value is unavailable, keep the voltage estimate.
+          const bmsRaw = states['sensor.zamp_ups_monitor_soc'] ? parseFloat(states['sensor.zamp_ups_monitor_soc'].state) : NaN;
+          if (!Number.isNaN(bmsRaw)) soc = Math.min(soc, Math.round(bmsRaw));
           const color = soc >= 40 ? '#4CAF50' : soc >= 20 ? '#FF9800' : '#F44336';
           const fillWidth = Math.max(0, Math.min(100, soc));
           return `
@@ -161,11 +166,6 @@ cards:
           const capacity = states['sensor.zamp_ups_monitor_capacity_remaining'] ? parseFloat(states['sensor.zamp_ups_monitor_capacity_remaining'].state) : 0;
           const nominal = states['sensor.zamp_ups_monitor_nominal_capacity'] ? parseFloat(states['sensor.zamp_ups_monitor_nominal_capacity'].state) : 300;
           const delta = states['sensor.zamp_ups_monitor_delta_cell_voltage'] ? parseFloat(states['sensor.zamp_ups_monitor_delta_cell_voltage'].state) : 0;
-          // BMS coulomb-counted SOC — accurate when real current flows (charge/
-          // outage discharge), shown next to capacity. The big gauge stays
-          // voltage-based; this is the counterpart number for when current is live.
-          const bmsSocRaw = states['sensor.zamp_ups_monitor_soc'] ? parseFloat(states['sensor.zamp_ups_monitor_soc'].state) : NaN;
-          const bmsSoc = Number.isNaN(bmsSocRaw) ? '--' : Math.round(bmsSocRaw);
 
           let timeStr = 'Idle';
           let timeColor = '#999';
@@ -201,8 +201,8 @@ cards:
                 <div style="color:${timeColor};font-size:18px;font-weight:bold;">${timeStr}</div>
               </div>
               <div>
-                <div style="color:#888;font-size:11px;margin-bottom:2px;">Capacity/SOC</div>
-                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${capacity.toFixed(0)}Ah/${bmsSoc}%</div>
+                <div style="color:#888;font-size:11px;margin-bottom:2px;">Capacity</div>
+                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${capacity.toFixed(0)}Ah</div>
               </div>
               <div>
                 <div style="color:#888;font-size:11px;margin-bottom:2px;">Cell &#916;</div>
