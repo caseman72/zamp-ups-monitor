@@ -8,13 +8,20 @@
 # After first flash, device renames itself to zamp-monitor.local:
 #   ./upload.sh
 #
-# Splits compile + upload because PlatformIO's espressif32 platform blocks
-# Python 3.14 (used by Homebrew esphome). The compile step tolerates it but
-# the upload step re-runs the version check and aborts — so we compile with
-# esphome, then upload the built firmware.ota.bin via esphome.espota2 directly.
+# Splits compile + upload because the espressif32 / esphome toolchain rejects
+# Python 3.14. Homebrew's python3 tracks the latest (3.14), so we pin esphome
+# to a dedicated Python 3.13 venv ($ESPHOME below) and use it for BOTH the
+# compile and the direct esphome.espota2 OTA push — no dependence on the
+# system python or PATH ordering, so a future `brew` python bump can't break it.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Pinned esphome (Python 3.13 venv). Override with ESPHOME=... if it moves.
+ESPHOME="${ESPHOME:-/Volumes/machfour-2tb/.venvs/esphome/bin/esphome}"
+if [[ ! -x "$ESPHOME" ]]; then
+    echo "Error: esphome not found at $ESPHOME (create the 3.13 venv or set ESPHOME=...)."
+    exit 1
+fi
 DEVICE="${1:-zamp-monitor.local}"
 CONFIG="${2:-zamp-monitor.yaml}"
 SECRETS="${3:-secrets.h}"
@@ -41,7 +48,7 @@ FIRMWARE="$SCRIPT_DIR/.esphome/build/$CONFIG_NAME/.pioenvs/$CONFIG_NAME/firmware
 cd "$SCRIPT_DIR"
 
 echo "Compiling $CONFIG..."
-esphome \
+"$ESPHOME" \
     -s wifi_ssid "$WIFI_SSID" \
     -s wifi_password "$WIFI_PASSWORD" \
     -s mqtt_broker "$MQTT_BROKER" \
@@ -56,7 +63,7 @@ if [[ ! -f "$FIRMWARE" ]]; then
 fi
 
 echo "Uploading to $DEVICE via OTA..."
-ESPHOME_PY="$(head -1 "$(command -v esphome)" | sed 's|^#!||')"
+ESPHOME_PY="$(head -1 "$ESPHOME" | sed 's|^#!||')"
 OTA_PASSWORD="$OTA_PASSWORD" DEVICE="$DEVICE" FIRMWARE="$FIRMWARE" \
 "$ESPHOME_PY" - <<'PY'
 import os, sys

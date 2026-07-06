@@ -37,9 +37,21 @@ Update interval: 61 s (skewed by 1 s from revel's 60 s — co-prime so they only
 - **Battery**: TEMGO 12V 300Ah LiFePO4 (200A internal BMS, BLE app)
 - **Distance**: ~10 ft from battery, through one wall + furnace
   (RSSI ~-79 dBm — comfortable for sustained GATT connection)
-- **I/O**: none wired. REL1 (D2 / GPIO 5) is `internal: true` +
-  `ALWAYS_OFF` so the pin is driven low rather than floating. Add
-  REL2/REL3/REL4 the same way if the board variant exposes them.
+- **I/O**: REL1–REL3 (D2/D3/D4 = GPIO 5/6/7) are wired as dry contacts
+  across the three buttons of a Velux KLI 311 remote — see
+  "Skylight cover" below.
+
+## Skylight cover (Velux KLI 311)
+
+The three relays act as dry contacts, each wired across one button's
+pads on the KLI 311 remote (powered by a fixed 3.3V buck converter —
+was 2xAAA — sharing a supply with the rest of the install; the relay
+contacts just short the button pads): REL1 = open, REL2 = stop,
+REL3 = close. Exposed to HA as a
+`time_based` cover named **Skylight** — a ~400 ms tap makes the INTEGRA
+window run to its end on its own, and `open_duration` (72 s) /
+`close_duration` (70 s) let HA estimate position and drive partial
+opens. One-way remote, so position is estimated, never measured.
 
 ## Networks
 
@@ -90,7 +102,7 @@ disconnects).
 | `zamp-monitor.yaml` | ESPHome config (JBD BMS via BLE) |
 | `secrets.example.h` | template for `secrets.h` |
 | `secrets.h` | actual credentials (gitignored) |
-| `upload.sh` | OTA helper that injects secrets as substitutions |
+| `upload.sh` | OTA helper that injects secrets as substitutions; uses the esphome pinned in the Python 3.13 venv at `/Volumes/machfour-2tb/.venvs/esphome/` (espressif32 rejects 3.14) — override with `ESPHOME=...` |
 | `.gitignore` | ignores `secrets.h`, `.esphome/`, etc. |
 
 ## License

@@ -79,10 +79,29 @@ jbd_bms_ble:
 # Canaduino DOs — kept defined as internal so pins are driven LOW (not floating).
 # REL1 = D2 = GPIO 5. Add REL2/REL3/REL4 here if the board variant has them.
 switch:
+  # --- Velux KLI 311 skylight ---
+  # 3 Canaduino relays used as DRY CONTACTS, each wired ACROSS one button's
+  # two pads on the 311. Remote is powered by a fixed 3.3V buck converter
+  # (was 2xAAA), sharing a supply with the rest of the install — the relay
+  # contacts still just short the button pads, they carry no supply current.
+  # GPIO->relay map confirmed against ../canaduino-remote/
+  # liftmaster-remote.yaml (same Canaduino + Nano ESP32 hardware, relays on
+  # GPIO 4-8): D2=GPIO5, D3=GPIO6, D4=GPIO7. Internal: driven only by the
+  # skylight cover below. Temporarily set `internal: false` to click an
+  # individual relay while bench-wiring the remote.
   - platform: gpio
-    pin: 5
-    name: "REL1 (unused)"
-    id: rel1
+    pin: 5            # relay 1 = D2 -> button 1  UP / OPEN
+    id: sky_open
+    internal: true
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: 6            # relay 2 = D3 -> button 2  STOP
+    id: sky_stop
+    internal: true
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    pin: 7            # relay 3 = D4 -> button 3  DOWN / CLOSE
+    id: sky_close
     internal: true
     restore_mode: ALWAYS_OFF
 
@@ -105,6 +124,33 @@ switch:
     discharging:
       name: "Discharging"
       icon: "mdi:battery-minus"
+
+# Velux skylight as a TIME-BASED cover. One-way remote = no position
+# feedback, so ESPHome estimates position from travel time: a single ~400ms
+# relay tap makes the INTEGRA window run to its end on its own (short press =
+# full travel), and open/close_duration let HA show opening/closing/open/
+# closed states AND drive it to a partial position (taps open, waits the
+# proportional time, taps stop). Time your window full-open and full-close
+# with a stopwatch and set the durations to match (they may differ slightly).
+# Bump the 400ms tap to ~600ms if a tap ever fails to register.
+cover:
+  - platform: time_based
+    name: "Skylight"
+    device_class: window
+    open_action:
+      - switch.turn_on: sky_open
+      - delay: 400ms
+      - switch.turn_off: sky_open
+    open_duration: 72s
+    close_action:
+      - switch.turn_on: sky_close
+      - delay: 400ms
+      - switch.turn_off: sky_close
+    close_duration: 70s
+    stop_action:
+      - switch.turn_on: sky_stop
+      - delay: 400ms
+      - switch.turn_off: sky_stop
 
 # MQTT buttons for Home Assistant
 button:
