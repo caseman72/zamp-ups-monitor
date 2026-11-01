@@ -4,18 +4,18 @@ cards:
     heading: Temgo UPS
     heading_style: title
   - type: custom:button-card
-    entity: sensor.zamp_ups_monitor_soc
+    entity: sensor.zamp_ups_monitor_gauge_soc
     show_name: false
     show_icon: false
     show_state: false
     styles:
       card:
-        - background: "linear-gradient(145deg, #2a2a2a, #1a1a1a)"
+        - background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)'
         - border-radius: 12px
         - padding: 16px
         - box-shadow: 0 2px 8px rgba(0,0,0,0.3)
       grid:
-        - grid-template-areas: "\"title\" \"battery\" \"row1\" \"row2\" \"row3\""
+        - grid-template-areas: '"title" "battery" "row1" "row2" "row3"'
         - grid-template-rows: auto auto auto auto auto
     custom_fields:
       title: |
@@ -26,46 +26,22 @@ cards:
         ]]]
       battery: |
         [[[
-          // Gauge = min(voltage-derived SOC, BMS coulomb SOC). Each lies HIGH in
-          // its own failure mode — voltage over-reads under charge, the BMS counter
-          // over-reads on the sub-threshold canaduino drain (pinned 100% then a
-          // step to 0% at cutoff) — so the lower of the two is the honest one.
-          // Voltage piece first:
-          const v = states['sensor.zamp_ups_monitor_pack_voltage']
-            ? parseFloat(states['sensor.zamp_ups_monitor_pack_voltage'].state) : NaN;
-          // 4S LiFePO4 resting OCV -> SOC (pack volts). Flat in the mid-range
-          // (LFP plateau), only sharp near the ends. At the 2A trickle the charge
-          // offset is negligible (~0.007C) so this still tracks true SOC.
-          const ocv = [
-            [10.00, 0], [12.00, 10], [12.52, 20], [12.80, 30], [12.88, 40],
-            [13.00, 50], [13.04, 60], [13.12, 70], [13.20, 80], [13.28, 90],
-            [13.40, 99], [13.60, 100],
-          ];
-          let soc = 0;
-          if (!Number.isNaN(v)) {
-            if (v <= ocv[0][0]) soc = 0;
-            else if (v >= ocv[ocv.length - 1][0]) soc = 100;
-            else for (let i = 1; i < ocv.length; i++) {
-              if (v <= ocv[i][0]) {
-                soc = ocv[i - 1][1] + (ocv[i][1] - ocv[i - 1][1]) * (v - ocv[i - 1][0]) / (ocv[i][0] - ocv[i - 1][0]);
-                break;
-              }
-            }
-          }
-          soc = Math.round(soc);
-          // Fold in the BMS coulomb SOC: take whichever is lower (the honest one).
-          // If the BMS value is unavailable, keep the voltage estimate.
-          const bmsRaw = states['sensor.zamp_ups_monitor_soc'] ? parseFloat(states['sensor.zamp_ups_monitor_soc'].state) : NaN;
-          if (!Number.isNaN(bmsRaw)) soc = Math.min(soc, Math.round(bmsRaw));
-          const color = soc >= 40 ? '#4CAF50' : soc >= 20 ? '#FF9800' : '#F44336';
+          // Gauge SOC computed by the sensor.zamp_ups_monitor_gauge_soc template helper
+          // (min of voltage-derived OCV SOC and BMS coulomb SOC).
+          const st = states['sensor.zamp_ups_monitor_gauge_soc'];
+          const raw = st ? parseFloat(st.state) : NaN;
+          const ok = !Number.isNaN(raw);
+          const soc = ok ? Math.round(raw) : 0;
+          const color = !ok ? '#666' : soc >= 40 ? '#4CAF50' : soc >= 20 ? '#FF9800' : '#F44336';
           const fillWidth = Math.max(0, Math.min(100, soc));
+          const label = ok ? `${soc}%` : '--';
           return `
             <div style="display:flex;justify-content:center;align-items:center;padding:12px 0 16px;">
               <div style="position:relative;width:200px;height:80px;">
                 <div style="position:absolute;inset:0;border:3px solid #555;border-radius:10px;"></div>
                 <div style="position:absolute;top:50%;right:-14px;transform:translateY(-50%);width:10px;height:32px;background:#555;border-radius:0 5px 5px 0;"></div>
                 <div style="position:absolute;left:4px;bottom:4px;top:4px;width:calc(${fillWidth}% - 8px);background:${color};border-radius:6px;transition:width 1s ease,background 1s ease;"></div>
-                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:white;text-shadow:0 1px 3px rgba(0,0,0,0.5);">${soc}%</div>
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:white;text-shadow:0 1px 3px rgba(0,0,0,0.5);">${label}</div>
               </div>
             </div>
           `;
@@ -163,7 +139,11 @@ cards:
       row3: |
         [[[
           const currentVal = states['sensor.zamp_ups_monitor_current'] ? parseFloat(states['sensor.zamp_ups_monitor_current'].state) : 0;
-          const capacity = states['sensor.zamp_ups_monitor_capacity_remaining'] ? parseFloat(states['sensor.zamp_ups_monitor_capacity_remaining'].state) : 0;
+          // Capacity from the gauge SOC (min of voltage/BMS SOC) x 300Ah, not the
+          // BMS coulomb counter — that counter over-reads when charging stops.
+          const gaugeSoc = states['sensor.zamp_ups_monitor_gauge_soc'] ? parseFloat(states['sensor.zamp_ups_monitor_gauge_soc'].state) : NaN;
+          const capOk = !Number.isNaN(gaugeSoc);
+          const capacity = capOk ? gaugeSoc / 100 * 300 : 0;
           const nominal = states['sensor.zamp_ups_monitor_nominal_capacity'] ? parseFloat(states['sensor.zamp_ups_monitor_nominal_capacity'].state) : 300;
           const delta = states['sensor.zamp_ups_monitor_delta_cell_voltage'] ? parseFloat(states['sensor.zamp_ups_monitor_delta_cell_voltage'].state) : 0;
 
@@ -202,7 +182,7 @@ cards:
               </div>
               <div>
                 <div style="color:#888;font-size:11px;margin-bottom:2px;">Capacity</div>
-                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${capacity.toFixed(0)}Ah</div>
+                <div style="color:${timeColor};font-size:18px;font-weight:bold;">${capOk ? capacity.toFixed(0) + 'Ah' : '--'}</div>
               </div>
               <div>
                 <div style="color:#888;font-size:11px;margin-bottom:2px;">Cell &#916;</div>
