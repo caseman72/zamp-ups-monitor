@@ -61,7 +61,7 @@ P5 button safe-reboots.
 
 ## MQTT
 
-- Broker: HiveMQ Cloud (TLS, port 8883)
+- Broker: `hive.manion.org` (local, plain MQTT, port 1883)
 - Topic prefix: `zamp-ups`
 - Log topic: `zamp-ups/logs`
 - HA auto-discovery enabled (MAC-based unique IDs)
