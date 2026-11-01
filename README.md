@@ -104,6 +104,9 @@ disconnects).
 | `secrets.h` | actual credentials (gitignored) |
 | `upload.sh` | OTA helper that injects secrets as substitutions; uses the esphome pinned in the Python 3.13 venv at `/Volumes/machfour-2tb/.venvs/esphome/` (espressif32 rejects 3.14) — override with `ESPHOME=...` |
 | `.gitignore` | ignores `secrets.h`, `.esphome/`, etc. |
+| `ha-cards/battery-card.yaml` | HA dashboard card (button-card); SOC/capacity from the `sensor.zamp_ups_monitor_gauge_soc` template helper |
+| `ha-cards/charger-on-below-50.yaml` | HA automation: turns `switch.zamp_battery_charger` on below 51% gauge SOC (NOCO auto-shuts off after 96 hrs, so it isn't left on) + phone notification |
+| `ha-cards/low-voltage-alarm.yaml` | HA automation: high-priority phone alert if gauge SOC stays below 40% — charging failed |
 
 ## License
 

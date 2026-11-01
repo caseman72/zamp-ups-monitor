@@ -1,17 +1,18 @@
 alias: Zamp UPS Low Voltage
 description: >-
-  Charging is left ON 24/7 at 2A, so a healthy pack sits full (~13.4V+). If pack
-  voltage falls to ~13.16V (~75% on the 4S LiFePO4 OCV curve) something is broken
-  — dead charger, tripped breaker, or the BMS charge MOSFET cut out. This fires
-  with weeks of runway still left before any over-discharge danger.
+  The NOCO charger auto-shuts off after 96 hrs, so it is not left on: "Zamp
+  Charger On Below 50%" turns switch.zamp_battery_charger on when gauge SOC
+  drops below 51. If gauge SOC keeps falling to 40% anyway, charging has failed
+  — charger switch didn't turn on, NOCO not charging, tripped breaker, BMS
+  charge MOSFET off, or the load is outrunning the charger.
   Gated on the BMS BLE switch: the firmware filters NaN, so when BLE is off the
-  voltage sensor holds a STALE value rather than going unavailable — only alarm
-  when the link is live and the reading is real.
+  SOC/voltage sensors hold a STALE value rather than going unavailable — only
+  alarm when the link is live and the reading is real.
 triggers:
   - trigger: numeric_state
     entity_id:
-      - sensor.zamp_ups_monitor_pack_voltage
-    below: 13.16
+      - sensor.zamp_ups_monitor_gauge_soc
+    below: 40
     for:
       minutes: 10
 conditions:
@@ -19,20 +20,26 @@ conditions:
     entity_id: switch.zamp_ups_monitor_bms_ble
     state: "on"
 actions:
-  - action: notify.mobile_app_sm_f766u1
+  - action: notify.mobile_app_sm_f776u1
     metadata: {}
     data:
-      title: ⚠️ Zamp UPS Low Voltage
+      title: ⚠️ Zamp UPS Low Battery
       message: >-
-        Pack {{ states('sensor.zamp_ups_monitor_pack_voltage') }}V (~75%) —
-        charging likely failed. {{ now().strftime('%d %b %Y – %-I:%M %p') }}
+        Battery {{ states('sensor.zamp_ups_monitor_gauge_soc') | round(0) }}%
+        ({{ states('sensor.zamp_ups_monitor_pack_voltage') }}V), charger
+        {{ states('switch.zamp_battery_charger') }} — charging failed below 50%.
+        {{ now().strftime('%d %b %Y – %-I:%M %p') }}
+      data:
+        ttl: 0
+        priority: high
     alias: Notifications 'Send a notification to caseman'
   - action: system_log.write
     metadata: {}
     data:
       level: warning
       message: >-
-        Zamp UPS low voltage: {{ states('sensor.zamp_ups_monitor_pack_voltage') }}V
-        (<=13.16V / ~75%) — charging may have failed
+        Zamp UPS low battery: {{ states('sensor.zamp_ups_monitor_gauge_soc') | round(0) }}%
+        ({{ states('sensor.zamp_ups_monitor_pack_voltage') }}V), charger
+        {{ states('switch.zamp_battery_charger') }} — charging failed below 50%
       logger: zamp_ups
 mode: single
